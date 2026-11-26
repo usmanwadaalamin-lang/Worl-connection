@@ -1,0 +1,6 @@
+{
+  "name": "Al Amana Social",
+  "description": "A Hausa-first social community web application with posts, comments, people search, direct chat, notifications, and high-thinking AI reasoning.",
+  "requestFramePermissions": ["microphone", "camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

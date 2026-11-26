@@ -1,0 +1,1045 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Public social profile for an Al Amana Social member (PII excluded).",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "handle": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 40,
+          "pattern": "^@[a-zA-Z0-9_]+$"
+        },
+        "bio": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 280
+        },
+        "avatarUrl": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 160000
+        },
+        "isPublic": {
+          "type": "boolean"
+        },
+        "isOnline": {
+          "type": "boolean"
+        },
+        "lastActiveAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "name", "handle", "bio", "avatarUrl", "isPublic", "createdAt", "updatedAt"]
+    },
+    "UserReadStateDoc": {
+      "title": "UserReadStateDoc",
+      "description": "Per-user read sequence cursor for group and channel conversations.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "roomId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "lastReadSeq": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["userId", "roomId", "lastReadSeq", "updatedAt"]
+    },
+    "UserPrivateInfo": {
+      "title": "UserPrivateInfo",
+      "description": "Owner-only PII record containing member email address and/or phone number.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "phoneNumber": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 32
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "updatedAt"]
+    },
+    "FollowEdge": {
+      "title": "FollowEdge",
+      "description": "Directed follow relationship between two users.",
+      "type": "object",
+      "properties": {
+        "followerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "targetId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["followerId", "targetId", "createdAt"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "Community post authored by a member.",
+      "type": "object",
+      "properties": {
+        "authorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "authorHandle": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 40,
+          "pattern": "^@[a-zA-Z0-9_]+$"
+        },
+        "authorAvatarUrl": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 160000
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "likesCount": {
+          "type": "integer"
+        },
+        "commentsCount": {
+          "type": "integer"
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["public"]
+        },
+        "analysis": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 6000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "authorId",
+        "authorName",
+        "authorHandle",
+        "authorAvatarUrl",
+        "text",
+        "likesCount",
+        "commentsCount",
+        "visibility",
+        "createdAt"
+      ]
+    },
+    "PostLike": {
+      "title": "PostLike",
+      "description": "Per-user like marker synchronized atomically with Post.likesCount.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["userId", "createdAt"]
+    },
+    "PostComment": {
+      "title": "PostComment",
+      "description": "Comment on a community post.",
+      "type": "object",
+      "properties": {
+        "postId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "authorHandle": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 40,
+          "pattern": "^@[a-zA-Z0-9_]+$"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["postId", "authorId", "authorName", "authorHandle", "text", "createdAt"]
+    },
+    "ChatThread": {
+      "title": "ChatThread",
+      "description": "Two-party direct chat thread metadata.",
+      "type": "object",
+      "properties": {
+        "participantA": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "participantB": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "lastMessage": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 1000
+        },
+        "lastSenderId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "unreadCountA": {
+          "type": "integer"
+        },
+        "unreadCountB": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["participantA", "participantB", "lastMessage", "updatedAt"]
+    },
+    "ChatMessageDoc": {
+      "title": "ChatMessageDoc",
+      "description": "Direct message inside a two-party chat thread.",
+      "type": "object",
+      "properties": {
+        "senderId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "recipientId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "messageType": {
+          "type": "string",
+          "enum": ["text", "voice"]
+        },
+        "audioData": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 350000
+        },
+        "audioDuration": {
+          "type": "integer"
+        },
+        "read": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["senderId", "recipientId", "text", "createdAt"]
+    },
+    "NotificationDoc": {
+      "title": "NotificationDoc",
+      "description": "User notification record for likes, comments, and follows.",
+      "type": "object",
+      "properties": {
+        "recipientId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "actorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "actorName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "type": {
+          "type": "string",
+          "enum": ["like", "follow", "comment"]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "read": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["recipientId", "actorId", "actorName", "type", "message", "read", "createdAt"]
+    },
+    "GroupDoc": {
+      "title": "GroupDoc",
+      "description": "Multi-member private group chat room.",
+      "type": "object",
+      "properties": {
+        "creatorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "description": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 280
+        },
+        "memberIds": {
+          "type": "array",
+          "description": "Bounded list of up to 50 member UIDs."
+        },
+        "lastMessage": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 1000
+        },
+        "lastSenderId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "messageSeq": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["creatorId", "name", "description", "memberIds", "lastMessage", "createdAt", "updatedAt"]
+    },
+    "GroupMessageDoc": {
+      "title": "GroupMessageDoc",
+      "description": "Message inside a multi-member group chat.",
+      "type": "object",
+      "properties": {
+        "groupId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "senderId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "senderName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "visibleTo": {
+          "type": "array",
+          "description": "Bounded snapshot of group member UIDs allowed to list this message."
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "messageType": {
+          "type": "string",
+          "enum": ["text", "voice"]
+        },
+        "audioData": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 350000
+        },
+        "audioDuration": {
+          "type": "integer"
+        },
+        "seq": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["groupId", "senderId", "senderName", "visibleTo", "text", "createdAt"]
+    },
+    "GroupReadReceiptDoc": {
+      "title": "GroupReadReceiptDoc",
+      "description": "Per-member read timestamp marker inside a group chat.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "groupId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "visibleTo": {
+          "type": "array",
+          "description": "Bounded snapshot of group member UIDs allowed to list this read receipt."
+        },
+        "lastReadAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["userId", "groupId", "visibleTo", "lastReadAt"]
+    },
+    "ChannelDoc": {
+      "title": "ChannelDoc",
+      "description": "Public or VIP one-to-many broadcast channel.",
+      "type": "object",
+      "properties": {
+        "creatorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "creatorName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "description": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 280
+        },
+        "followersCount": {
+          "type": "integer"
+        },
+        "lastMessage": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 1000
+        },
+        "messageSeq": {
+          "type": "integer"
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["public"]
+        },
+        "isVip": {
+          "type": "boolean"
+        },
+        "vipPriceLabel": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 60
+        },
+        "vipPaymentInfo": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "vipMemberIds": {
+          "type": "array",
+          "description": "Bounded list of up to 50 VIP member UIDs (including creator)."
+        },
+        "vipBillingCycle": {
+          "type": "string",
+          "enum": ["monthly", "once"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["creatorId", "creatorName", "name", "description", "followersCount", "lastMessage", "visibility", "createdAt", "updatedAt"]
+    },
+    "ChannelFollowerDoc": {
+      "title": "ChannelFollowerDoc",
+      "description": "Per-user channel subscription marker synchronized atomically with Channel.followersCount.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["userId", "createdAt"]
+    },
+    "ChannelVipMemberDoc": {
+      "title": "ChannelVipMemberDoc",
+      "description": "Approved VIP subscriber record with automatic 30-day expiration granted by a VIP channel creator.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "channelId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "grantedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "accessMode": {
+          "type": "string",
+          "enum": ["monthly", "lifetime"]
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "durationDays": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["userId", "channelId", "grantedBy", "createdAt"]
+    },
+    "ChannelVipReceiptDoc": {
+      "title": "ChannelVipReceiptDoc",
+      "description": "Payment receipt submission with automated screening verdict awaiting VIP channel creator approval.",
+      "type": "object",
+      "properties": {
+        "channelId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "creatorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "userHandle": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 40,
+          "pattern": "^@[a-zA-Z0-9_]+$"
+        },
+        "amountText": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "referenceText": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 120
+        },
+        "note": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "receiptImage": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 350000
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "approved", "rejected"]
+        },
+        "aiVerdict": {
+          "type": "string",
+          "enum": ["match", "review", "mismatch", "unavailable"]
+        },
+        "aiSummary": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 1000
+        },
+        "reviewedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "channelId",
+        "creatorId",
+        "userId",
+        "userName",
+        "userHandle",
+        "amountText",
+        "referenceText",
+        "note",
+        "status",
+        "aiVerdict",
+        "aiSummary",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ChannelPostDoc": {
+      "title": "ChannelPostDoc",
+      "description": "Broadcast update published by a channel creator.",
+      "type": "object",
+      "properties": {
+        "channelId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "messageType": {
+          "type": "string",
+          "enum": ["text", "voice"]
+        },
+        "audioData": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 350000
+        },
+        "audioDuration": {
+          "type": "integer"
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["public", "vip"]
+        },
+        "visibleTo": {
+          "type": "array",
+          "description": "Bounded snapshot of VIP member UIDs allowed to list VIP channel broadcasts."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["channelId", "authorId", "authorName", "text", "visibility", "createdAt"]
+    },
+    "SponsoredPostDoc": {
+      "title": "SponsoredPostDoc",
+      "description": "Admin-managed sponsored promotion displayed in the community feed.",
+      "type": "object",
+      "properties": {
+        "authorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "businessName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "headline": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "ctaLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "actionUrl": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 512,
+          "pattern": "^(|https?://.*)$"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "paused"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["authorId", "businessName", "headline", "text", "ctaLabel", "actionUrl", "status", "createdAt", "updatedAt"]
+    },
+    "CallSessionDoc": {
+      "title": "CallSessionDoc",
+      "description": "WebRTC signaling session for 1-on-1 audio and video calls.",
+      "type": "object",
+      "properties": {
+        "callerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "callerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "calleeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "calleeName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "callType": {
+          "type": "string",
+          "enum": ["audio", "video"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["ringing", "active", "ended", "declined"]
+        },
+        "offerSdp": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 20000
+        },
+        "answerSdp": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 20000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "callerId",
+        "callerName",
+        "calleeId",
+        "calleeName",
+        "callType",
+        "status",
+        "offerSdp",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CallCandidateDoc": {
+      "title": "CallCandidateDoc",
+      "description": "WebRTC ICE candidate exchanged during a call session.",
+      "type": "object",
+      "properties": {
+        "senderId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "recipientId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "candidate": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "sdpMid": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 64
+        },
+        "sdpMLineIndex": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["senderId", "recipientId", "candidate", "sdpMid", "sdpMLineIndex", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Public profile documents for Al Amana Social members."
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/UserPrivateInfo" },
+      "description": "Private PII subcollection accessible only to the owning user."
+    },
+    "/users/{userId}/readStates/{roomId}": {
+      "schema": { "$ref": "#/entities/UserReadStateDoc" },
+      "description": "Owner-only read sequence cursors for unread badges on groups and channels."
+    },
+    "/follows/{followId}": {
+      "schema": { "$ref": "#/entities/FollowEdge" },
+      "description": "Follow relationships between members."
+    },
+    "/posts/{postId}": {
+      "schema": { "$ref": "#/entities/Post" },
+      "description": "Community feed posts."
+    },
+    "/posts/{postId}/likes/{userId}": {
+      "schema": { "$ref": "#/entities/PostLike" },
+      "description": "Per-user like subcollection synchronized with Post.likesCount."
+    },
+    "/posts/{postId}/comments/{commentId}": {
+      "schema": { "$ref": "#/entities/PostComment" },
+      "description": "Comments belonging to a post."
+    },
+    "/sponsored_posts/{adId}": {
+      "schema": { "$ref": "#/entities/SponsoredPostDoc" },
+      "description": "Admin-managed sponsored business promotions."
+    },
+    "/chats/{threadId}": {
+      "schema": { "$ref": "#/entities/ChatThread" },
+      "description": "Direct message thread metadata."
+    },
+    "/chats/{threadId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessageDoc" },
+      "description": "Messages belonging to a direct message thread."
+    },
+    "/notifications/{notifId}": {
+      "schema": { "$ref": "#/entities/NotificationDoc" },
+      "description": "Activity notifications scoped to the recipient user."
+    },
+    "/groups/{groupId}": {
+      "schema": { "$ref": "#/entities/GroupDoc" },
+      "description": "Private multi-member group chats."
+    },
+    "/groups/{groupId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/GroupMessageDoc" },
+      "description": "Messages inside a group chat."
+    },
+    "/groups/{groupId}/readReceipts/{userId}": {
+      "schema": { "$ref": "#/entities/GroupReadReceiptDoc" },
+      "description": "Per-member read receipts inside a group chat."
+    },
+    "/channels/{channelId}": {
+      "schema": { "$ref": "#/entities/ChannelDoc" },
+      "description": "Public and VIP broadcast channels."
+    },
+    "/channels/{channelId}/followers/{userId}": {
+      "schema": { "$ref": "#/entities/ChannelFollowerDoc" },
+      "description": "Per-user channel subscription marker."
+    },
+    "/channels/{channelId}/vipMembers/{userId}": {
+      "schema": { "$ref": "#/entities/ChannelVipMemberDoc" },
+      "description": "Creator-approved VIP members for a paid VIP channel."
+    },
+    "/channels/{channelId}/vipReceipts/{receiptId}": {
+      "schema": { "$ref": "#/entities/ChannelVipReceiptDoc" },
+      "description": "Submitted VIP payment receipts awaiting creator review."
+    },
+    "/channels/{channelId}/posts/{channelPostId}": {
+      "schema": { "$ref": "#/entities/ChannelPostDoc" },
+      "description": "Broadcast messages published inside a channel."
+    },
+    "/calls/{callId}": {
+      "schema": { "$ref": "#/entities/CallSessionDoc" },
+      "description": "1-on-1 WebRTC audio and video call signaling sessions."
+    },
+    "/calls/{callId}/callerCandidates/{candidateId}": {
+      "schema": { "$ref": "#/entities/CallCandidateDoc" },
+      "description": "ICE candidates emitted by the caller."
+    },
+    "/calls/{callId}/calleeCandidates/{candidateId}": {
+      "schema": { "$ref": "#/entities/CallCandidateDoc" },
+      "description": "ICE candidates emitted by the callee."
+    }
+  }
+}
