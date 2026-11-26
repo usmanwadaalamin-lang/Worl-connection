@@ -64,6 +64,7 @@ import {
   shortenRoomInviteLink,
 } from '../lib/inviteLinks';
 import {
+  extractReadableError,
   queryDeepThink,
   summarizeChatRoom,
   transcribeVoiceNote,
@@ -826,8 +827,7 @@ export function ChatView({
     } catch (err) {
       setTranslateErrorByMsgId((prev) => ({
         ...prev,
-        [msgId]:
-          err instanceof Error ? err.message : 'Unable to translate message.',
+        [msgId]: extractReadableError(err, 'Unable to translate message right now.'),
       }));
     } finally {
       setTranslatingMsgKey((curr) => (curr === reqKey ? null : curr));
@@ -851,8 +851,7 @@ export function ChatView({
     } catch (err) {
       setTranscriptErrorByMsgId((prev) => ({
         ...prev,
-        [msgId]:
-          err instanceof Error ? err.message : 'Unable to transcribe audio.',
+        [msgId]: extractReadableError(err, 'Unable to transcribe audio right now.'),
       }));
     } finally {
       setTranscribingMsgId((curr) => (curr === msgId ? null : curr));
@@ -918,8 +917,7 @@ export function ChatView({
     } catch (err) {
       setSummaryErrorByRoomKey((prev) => ({
         ...prev,
-        [roomKey]:
-          err instanceof Error ? err.message : 'Unable to summarize messages.',
+        [roomKey]: extractReadableError(err, 'Unable to summarize messages right now.'),
       }));
     } finally {
       setSummarizingRoomKey((curr) => (curr === roomKey ? null : curr));
@@ -1322,10 +1320,10 @@ export function ChatView({
       onAddDeepThinkMessage({
         id: `msg-err-${Date.now()}`,
         sender: 'them',
-        text:
-          err instanceof Error
-            ? err.message
-            : 'An error occurred while reaching the reasoning service.',
+        text: extractReadableError(
+          err,
+          'An error occurred while reaching the reasoning service.',
+        ),
         timestamp: now,
         error: 'failed',
       });

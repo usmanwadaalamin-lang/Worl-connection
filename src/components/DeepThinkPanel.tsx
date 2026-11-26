@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ArrowUpRight, BrainCircuit, Loader2, Send } from 'lucide-react';
 import { UserProfile } from '../types/social';
 import { Avatar } from './Avatar';
-import { queryDeepThink } from '../lib/thinkApi';
+import { extractReadableError, queryDeepThink } from '../lib/thinkApi';
 import { Translations } from '../lib/i18n';
 
 interface DeepThinkPanelProps {
@@ -43,9 +43,7 @@ export function DeepThinkPanel({
       setAnswer(result.answer);
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : 'Could not reach the reasoning engine.',
+        extractReadableError(err, 'Could not reach the reasoning engine.'),
       );
     } finally {
       setLoading(false);

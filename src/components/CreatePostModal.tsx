@@ -7,7 +7,7 @@ import {
   Video,
   X,
 } from 'lucide-react';
-import { queryDeepThink } from '../lib/thinkApi';
+import { extractReadableError, queryDeepThink } from '../lib/thinkApi';
 import { Translations } from '../lib/i18n';
 import { PostMediaAttachment } from '../lib/firestoreSocial';
 import {
@@ -215,7 +215,7 @@ export function CreatePostModal({
       setText(result.answer);
     } catch (err) {
       setDraftError(
-        err instanceof Error ? err.message : 'Unable to generate draft right now.',
+        extractReadableError(err, 'Unable to generate draft right now.'),
       );
     } finally {
       setDrafting(false);

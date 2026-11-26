@@ -11,6 +11,77 @@ export interface ThinkResponse {
   thinkingLevel: string;
 }
 
+export function extractReadableError(
+  err: unknown,
+  fallback = 'Ba a iya kammala wannan buƙatar a yanzu ba. Da fatan a sake gwadawa.',
+): string {
+  const cleanText = (value: unknown): string | null => {
+    if (typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === '[object Object]') return null;
+    return trimmed;
+  };
+
+  const direct = cleanText(err);
+  if (direct) return direct;
+
+  if (err && typeof err === 'object') {
+    const obj = err as {
+      message?: unknown;
+      error?: unknown;
+      details?: unknown;
+      statusText?: unknown;
+    };
+
+    const nestedError =
+      obj.error && typeof obj.error === 'object'
+        ? (obj.error as { message?: unknown; error?: unknown })
+        : null;
+
+    const candidates: unknown[] = [
+      obj.message,
+      nestedError?.message,
+      obj.error,
+      nestedError?.error,
+      obj.details,
+      obj.statusText,
+    ];
+
+    for (const candidate of candidates) {
+      const s = cleanText(candidate);
+      if (s) return s;
+      if (candidate && typeof candidate === 'object') {
+        const deep = cleanText((candidate as { message?: unknown }).message);
+        if (deep) return deep;
+      }
+    }
+
+    try {
+      const json = JSON.stringify(err);
+      if (json && json !== '{}' && json !== '[]') {
+        return json.length > 220 ? `${json.slice(0, 220)}...` : json;
+      }
+    } catch {
+      // Ignore circular object serialization issues
+    }
+  }
+
+  return fallback;
+}
+
+function parseJsonObject(rawText: string): Record<string, unknown> | null {
+  const trimmed = rawText.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = JSON.parse(trimmed);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function queryDeepThink(params: {
   prompt: string;
   context?: string;
@@ -24,8 +95,10 @@ export async function queryDeepThink(params: {
   try {
     response = await fetch('/api/think', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/json',
+        Accept: 'application/json',
       },
       body: JSON.stringify(params),
       signal: controller.signal,
@@ -43,37 +116,45 @@ export async function queryDeepThink(params: {
     window.clearTimeout(timeoutId);
   }
 
+  const rawText = await response.text().catch(() => '');
   const contentType = response.headers.get('content-type') || '';
-  if (!contentType.includes('application/json')) {
-    if (!response.ok) {
+  const payload = parseJsonObject(rawText);
+
+  if (!payload) {
+    if (rawText.trim().startsWith('<') || contentType.includes('text/html')) {
       throw new Error(
-        `World Connection AI ba ta samuwa a wannan adireshin (HTTP ${response.status}).`,
+        `World Connection AI ba ta samuwa a wannan adireshin a halin yanzu (HTTP ${response.status}).`,
       );
     }
-    throw new Error('World Connection AI service returned an unexpected response.');
+    if (!response.ok) {
+      throw new Error(
+        extractReadableError(
+          rawText,
+          `World Connection AI ba ta samuwa a halin yanzu (HTTP ${response.status}).`,
+        ),
+      );
+    }
+    throw new Error('World Connection AI ta dawo da amsar da ba a gane ba. Sake gwadawa.');
   }
-
-  const payload = (await response.json().catch(() => ({}))) as {
-    answer?: string;
-    model?: string;
-    thinkingLevel?: string;
-    error?: string;
-  };
 
   if (!response.ok) {
     throw new Error(
-      payload.error || `Request failed with status ${response.status}`,
+      extractReadableError(
+        payload,
+        `Ba a iya samun amsa daga World Connection AI ba (HTTP ${response.status}).`,
+      ),
     );
   }
 
-  if (!payload.answer) {
-    throw new Error('No response returned from World Connection AI.');
+  const answer = typeof payload.answer === 'string' ? payload.answer.trim() : '';
+  if (!answer) {
+    throw new Error('World Connection AI ba ta dawo da amsa ba. Da fatan a sake gwadawa.');
   }
 
   return {
-    answer: payload.answer,
-    model: payload.model ?? 'gemini-4-hydrogen',
-    thinkingLevel: payload.thinkingLevel ?? 'LOW',
+    answer,
+    model: typeof payload.model === 'string' ? payload.model : 'gemini-2.5-flash',
+    thinkingLevel: typeof payload.thinkingLevel === 'string' ? payload.thinkingLevel : 'LOW',
   };
 }
 
@@ -112,29 +193,28 @@ async function postChatAiJson<T>(
   const trimmed = rawText.trim();
   const contentType = response.headers.get('content-type') || '';
 
-  let payload: (T & { error?: string }) | null = null;
-  if (trimmed.startsWith('{') || trimmed.startsWith('[') || contentType.includes('application/json')) {
-    try {
-      payload = JSON.parse(trimmed) as T & { error?: string };
-    } catch {
-      payload = null;
-    }
-  }
+  const payload = parseJsonObject(trimmed) as (T & Record<string, unknown>) | null;
 
   if (!payload) {
     if (trimmed.startsWith('<') || contentType.includes('text/html')) {
       throw new Error(
-        `Preview server returned a webpage instead of AI JSON (HTTP ${response.status}). Please refresh the page and try again.`,
+        `AI service is temporarily unavailable at this address (HTTP ${response.status}). Please refresh and try again.`,
       );
     }
     throw new Error(
-      `AI service returned an unexpected response (HTTP ${response.status}).`,
+      extractReadableError(
+        trimmed,
+        `AI service returned an unexpected response (HTTP ${response.status}).`,
+      ),
     );
   }
 
   if (!response.ok) {
     throw new Error(
-      payload.error || `Request failed with status ${response.status}`,
+      extractReadableError(
+        payload,
+        `Unable to complete request (HTTP ${response.status}). Please try again.`,
+      ),
     );
   }
   return payload;
@@ -149,7 +229,7 @@ export async function translateChatMessage(params: {
     targetLanguage?: TranslationTarget;
   }>('/api/translate', params, 45000);
   if (!data.translatedText) {
-    throw new Error('No translation returned.');
+    throw new Error('No translation returned. Please try again.');
   }
   return {
     translatedText: data.translatedText,
@@ -189,4 +269,3 @@ export async function summarizeChatRoom(params: {
     messageCount: data.messageCount ?? params.messages.length,
   };
 }
-

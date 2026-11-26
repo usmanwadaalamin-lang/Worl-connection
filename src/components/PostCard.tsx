@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { CommentItem, Post, UserProfile } from '../types/social';
 import { Avatar } from './Avatar';
-import { queryDeepThink } from '../lib/thinkApi';
+import { extractReadableError, queryDeepThink } from '../lib/thinkApi';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { formatFirestoreTime } from '../lib/firestoreSocial';
 import { formatMediaDuration, loadPostMediaUrl } from '../lib/mediaPosts';
@@ -166,7 +166,7 @@ export function PostCard({
       await onSaveAnalysis(post.id, result.answer);
     } catch (err) {
       setAnalysisError(
-        err instanceof Error ? err.message : 'Unable to analyze post right now.',
+        extractReadableError(err, 'Unable to analyze post right now.'),
       );
     } finally {
       setAnalyzing(false);
