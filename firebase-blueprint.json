@@ -180,6 +180,36 @@
           "minLength": 0,
           "maxLength": 6000
         },
+        "mediaId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "mediaType": {
+          "type": "string",
+          "enum": ["image", "video"]
+        },
+        "mediaMimeType": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80,
+          "pattern": "^(image/(jpeg|jpg|png|webp)|video/(mp4|webm|quicktime))$"
+        },
+        "mediaPoster": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 120000
+        },
+        "mediaDuration": {
+          "type": "integer"
+        },
+        "mediaWidth": {
+          "type": "integer"
+        },
+        "mediaHeight": {
+          "type": "integer"
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time"
@@ -196,6 +226,96 @@
         "visibility",
         "createdAt"
       ]
+    },
+    "MediaAssetDoc": {
+      "title": "MediaAssetDoc",
+      "description": "Metadata descriptor for an uploaded community photo or short video stored in bounded chunks.",
+      "type": "object",
+      "properties": {
+        "authorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "mediaType": {
+          "type": "string",
+          "enum": ["image", "video"]
+        },
+        "mimeType": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80,
+          "pattern": "^(image/(jpeg|jpg|png|webp)|video/(mp4|webm|quicktime))$"
+        },
+        "chunkCount": {
+          "type": "integer"
+        },
+        "totalBytes": {
+          "type": "integer"
+        },
+        "durationSec": {
+          "type": "integer"
+        },
+        "width": {
+          "type": "integer"
+        },
+        "height": {
+          "type": "integer"
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["public"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "authorId",
+        "mediaType",
+        "mimeType",
+        "chunkCount",
+        "totalBytes",
+        "durationSec",
+        "width",
+        "height",
+        "visibility",
+        "createdAt"
+      ]
+    },
+    "MediaChunkDoc": {
+      "title": "MediaChunkDoc",
+      "description": "Bounded base64 binary slice belonging to a MediaAssetDoc.",
+      "type": "object",
+      "properties": {
+        "mediaId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "index": {
+          "type": "integer"
+        },
+        "data": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 660000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["mediaId", "authorId", "index", "data", "createdAt"]
     },
     "PostLike": {
       "title": "PostLike",
@@ -980,6 +1100,14 @@
     "/posts/{postId}/comments/{commentId}": {
       "schema": { "$ref": "#/entities/PostComment" },
       "description": "Comments belonging to a post."
+    },
+    "/media/{mediaId}": {
+      "schema": { "$ref": "#/entities/MediaAssetDoc" },
+      "description": "Public photo and short-video asset descriptors authored by members."
+    },
+    "/media/{mediaId}/chunks/{chunkId}": {
+      "schema": { "$ref": "#/entities/MediaChunkDoc" },
+      "description": "Bounded base64 slices belonging to a media asset."
     },
     "/sponsored_posts/{adId}": {
       "schema": { "$ref": "#/entities/SponsoredPostDoc" },

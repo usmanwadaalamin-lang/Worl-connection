@@ -352,6 +352,26 @@ export interface Translations {
   notifWelcomeBody: string;
   notifNewMessageFromPrefix: string;
   notifNewChannelPostPrefix: string;
+  // Photo & Short Video Posts
+  photoBtn: string;
+  shortVideoBtn: string;
+  shortVideosFilter: string;
+  photosFilter: string;
+  allPostsFilter: string;
+  shortVideoDurationHint: string;
+  videoTooLongErr: string;
+  videoTooLargeErr: string;
+  invalidMediaErr: string;
+  compressingVideoLabel: string;
+  uploadingMediaLabel: string;
+  tapToPlayVideo: string;
+  loadingVideoLabel: string;
+  removeMediaBtn: string;
+  deletePostBtn: string;
+  confirmDeletePostBtn: string;
+  toastPostDeleted: string;
+  emptyFilteredMediaTitle: string;
+  emptyFilteredMediaDesc: string;
 }
 
 const HAUSA: Translations = {
@@ -708,6 +728,26 @@ const HAUSA: Translations = {
   notifWelcomeBody: 'An kunna sanarwar World Connection! Za ka riƙa samun sanarwa da ƙara ga sabbin saƙonni.',
   notifNewMessageFromPrefix: 'Sabon saƙo daga',
   notifNewChannelPostPrefix: 'Sabon sako a channel:',
+  photoBtn: 'Hoto',
+  shortVideoBtn: 'Gajeran Bidiyo',
+  shortVideosFilter: 'Gajerun Bidiyo',
+  photosFilter: 'Hotuna',
+  allPostsFilter: 'Duka',
+  shortVideoDurationHint: 'Gajeran bidiyo har zuwa daƙiƙa 60 (≤ 10MB)',
+  videoTooLongErr: 'Bidiyon ya wuce daƙiƙa 60. Zaɓi gajeran bidiyo (≤ 60s).',
+  videoTooLargeErr:
+    'Girman fayil ɗin ya yi yawa (max 10MB). Rage tsawon bidiyon ka sake gwadawa.',
+  invalidMediaErr: 'Ba a gane wannan hoto ko bidiyon ba. Zaɓi JPG/PNG/WebP ko MP4/WebM.',
+  compressingVideoLabel: 'Ana rage girman bidiyo...',
+  uploadingMediaLabel: 'Ana ɗaurawa...',
+  tapToPlayVideo: 'Danna don kunna bidiyo',
+  loadingVideoLabel: 'Ana buɗe bidiyo...',
+  removeMediaBtn: 'Cire',
+  deletePostBtn: 'Goge',
+  confirmDeletePostBtn: 'Tabbatar Goge',
+  toastPostDeleted: 'An goge rubutun!',
+  emptyFilteredMediaTitle: 'Babu abin da aka ɗaura a nan tukuna',
+  emptyFilteredMediaDesc: 'Fara ɗaura hoto ko gajeran bidiyo domin al’umma su gani.',
 };
 
 const ENGLISH: Translations = {
@@ -1064,6 +1104,26 @@ const ENGLISH: Translations = {
   notifWelcomeBody: 'World Connection alerts are active! You will receive alerts for new messages.',
   notifNewMessageFromPrefix: 'New message from',
   notifNewChannelPostPrefix: 'New update in',
+  photoBtn: 'Photo',
+  shortVideoBtn: 'Short Video',
+  shortVideosFilter: 'Short Videos',
+  photosFilter: 'Photos',
+  allPostsFilter: 'All',
+  shortVideoDurationHint: 'Short video up to 60 seconds (≤ 10MB)',
+  videoTooLongErr: 'Video exceeds 60 seconds. Please pick a shorter clip.',
+  videoTooLargeErr:
+    'File size is too large (max 10MB). Please trim the clip and try again.',
+  invalidMediaErr: 'Unsupported photo or video format. Please choose JPG/PNG/WebP or MP4/WebM.',
+  compressingVideoLabel: 'Optimizing video...',
+  uploadingMediaLabel: 'Uploading...',
+  tapToPlayVideo: 'Tap to play short video',
+  loadingVideoLabel: 'Loading video...',
+  removeMediaBtn: 'Remove',
+  deletePostBtn: 'Delete',
+  confirmDeletePostBtn: 'Confirm Delete',
+  toastPostDeleted: 'Post deleted!',
+  emptyFilteredMediaTitle: 'Nothing posted here yet',
+  emptyFilteredMediaDesc: 'Upload a photo or short video to share with the community.',
 };
 
 export function getTranslations(lang: Language): Translations {

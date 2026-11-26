@@ -98,6 +98,19 @@ service cloud.firestore {
         && data.createdAt is timestamp;
     }
 
+    function isValidMediaMimeType(mime) {
+      return mime is string
+        && mime.size() >= 3
+        && mime.size() <= 80
+        && mime.matches('^(image/(jpeg|jpg|png|webp)|video/(mp4|webm|quicktime))$');
+    }
+
+    function isValidMediaPoster(poster) {
+      return poster is string
+        && poster.size() <= 120000
+        && (poster.size() == 0 || poster.matches('^data:image/(jpeg|jpg|png|webp);base64,.*'));
+    }
+
     function isValidPost(data) {
       return data.keys().hasAll([
           'authorId', 'authorName', 'authorHandle', 'authorAvatarUrl',
@@ -105,17 +118,59 @@ service cloud.firestore {
         ])
         && data.keys().hasOnly([
           'authorId', 'authorName', 'authorHandle', 'authorAvatarUrl',
-          'text', 'likesCount', 'commentsCount', 'visibility', 'analysis', 'createdAt'
+          'text', 'likesCount', 'commentsCount', 'visibility', 'analysis',
+          'mediaId', 'mediaType', 'mediaMimeType', 'mediaPoster',
+          'mediaDuration', 'mediaWidth', 'mediaHeight', 'createdAt'
         ])
         && isValidId(data.authorId)
         && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80
         && isValidHandle(data.authorHandle)
         && isValidAvatarUrl(data.authorAvatarUrl)
-        && data.text is string && data.text.size() >= 1 && data.text.size() <= 2000
+        && data.text is string && data.text.size() <= 2000
+        && (data.text.size() >= 1 || ('mediaId' in data && 'mediaType' in data))
+        && (('mediaId' in data) == ('mediaType' in data))
+        && (!('mediaId' in data) || isValidId(data.mediaId))
+        && (!('mediaType' in data) || data.mediaType in ['image', 'video'])
+        && (!('mediaMimeType' in data) || isValidMediaMimeType(data.mediaMimeType))
+        && (!('mediaPoster' in data) || isValidMediaPoster(data.mediaPoster))
+        && (!('mediaDuration' in data) || (data.mediaDuration is int && data.mediaDuration >= 0 && data.mediaDuration <= 60))
+        && (!('mediaWidth' in data) || (data.mediaWidth is int && data.mediaWidth >= 1 && data.mediaWidth <= 4096))
+        && (!('mediaHeight' in data) || (data.mediaHeight is int && data.mediaHeight >= 1 && data.mediaHeight <= 4096))
         && data.likesCount is int && data.likesCount >= 0
         && data.commentsCount is int && data.commentsCount >= 0
         && data.visibility is string && data.visibility == 'public'
         && (!('analysis' in data) || (data.analysis is string && data.analysis.size() <= 6000))
+        && data.createdAt is timestamp;
+    }
+
+    function isValidMediaAsset(data) {
+      return data.keys().hasAll([
+          'authorId', 'mediaType', 'mimeType', 'chunkCount',
+          'totalBytes', 'durationSec', 'width', 'height', 'visibility', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'authorId', 'mediaType', 'mimeType', 'chunkCount',
+          'totalBytes', 'durationSec', 'width', 'height', 'visibility', 'createdAt'
+        ])
+        && isValidId(data.authorId)
+        && data.mediaType in ['image', 'video']
+        && isValidMediaMimeType(data.mimeType)
+        && data.chunkCount is int && data.chunkCount >= 1 && data.chunkCount <= 30
+        && data.totalBytes is int && data.totalBytes >= 1 && data.totalBytes <= 13500000
+        && data.durationSec is int && data.durationSec >= 0 && data.durationSec <= 60
+        && data.width is int && data.width >= 1 && data.width <= 4096
+        && data.height is int && data.height >= 1 && data.height <= 4096
+        && data.visibility is string && data.visibility == 'public'
+        && data.createdAt is timestamp;
+    }
+
+    function isValidMediaChunk(data) {
+      return data.keys().hasAll(['mediaId', 'authorId', 'index', 'data', 'createdAt'])
+        && data.keys().hasOnly(['mediaId', 'authorId', 'index', 'data', 'createdAt'])
+        && isValidId(data.mediaId)
+        && isValidId(data.authorId)
+        && data.index is int && data.index >= 0 && data.index < 30
+        && data.data is string && data.data.size() >= 1 && data.data.size() <= 660000
         && data.createdAt is timestamp;
     }
 
@@ -453,7 +508,15 @@ service cloud.firestore {
         && incoming().authorId == request.auth.uid
         && incoming().likesCount == 0
         && incoming().commentsCount == 0
-        && incoming().createdAt == request.time;
+        && incoming().createdAt == request.time
+        && (
+          !('mediaId' in incoming())
+          || (
+            exists(/databases/$(database)/documents/media/$(incoming().mediaId))
+            && get(/databases/$(database)/documents/media/$(incoming().mediaId)).data.authorId == request.auth.uid
+            && get(/databases/$(database)/documents/media/$(incoming().mediaId)).data.mediaType == incoming().mediaType
+          )
+        );
       allow update: if isVerifiedUser()
         && isValidId(postId)
         && isValidPost(incoming())
@@ -524,6 +587,38 @@ service cloud.firestore {
           && isValidId(postId)
           && isValidId(commentId)
           && isOwner(existing().authorId);
+      }
+    }
+
+    match /media/{mediaId} {
+      allow get: if isSignedIn() && isValidId(mediaId) && resource != null && existing().visibility == 'public';
+      allow list: if isSignedIn() && existing().visibility == 'public';
+      allow create: if isVerifiedUser()
+        && isValidId(mediaId)
+        && isValidMediaAsset(incoming())
+        && incoming().authorId == request.auth.uid
+        && incoming().createdAt == request.time;
+      allow delete: if isVerifiedUser() && isValidId(mediaId) && isOwner(existing().authorId);
+
+      match /chunks/{chunkId} {
+        allow get: if isSignedIn()
+          && isValidId(mediaId)
+          && isValidId(chunkId)
+          && resource != null
+          && exists(/databases/$(database)/documents/media/$(mediaId))
+          && get(/databases/$(database)/documents/media/$(mediaId)).data.visibility == 'public';
+        allow list: if isSignedIn() && existing().mediaId == mediaId;
+        allow create: if isVerifiedUser()
+          && isValidId(mediaId)
+          && isValidId(chunkId)
+          && isValidMediaChunk(incoming())
+          && incoming().mediaId == mediaId
+          && incoming().authorId == request.auth.uid
+          && incoming().createdAt == request.time
+          && exists(/databases/$(database)/documents/media/$(mediaId))
+          && get(/databases/$(database)/documents/media/$(mediaId)).data.authorId == request.auth.uid
+          && incoming().index < get(/databases/$(database)/documents/media/$(mediaId)).data.chunkCount;
+        allow delete: if isVerifiedUser() && isValidId(mediaId) && isValidId(chunkId) && isOwner(existing().authorId);
       }
     }
 

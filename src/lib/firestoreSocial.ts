@@ -16,6 +16,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './firebase';
+import { deletePostMediaBestEffort } from './mediaPosts';
 import {
   CallType,
   ReceiptAiVerdict,
@@ -268,32 +269,79 @@ export async function compressAvatarImage(file: File): Promise<string> {
   }
 }
 
+export interface PostMediaAttachment {
+  mediaId: string;
+  mediaType: 'image' | 'video';
+  mediaMimeType: string;
+  mediaPoster: string;
+  mediaDuration: number;
+  mediaWidth: number;
+  mediaHeight: number;
+}
+
 export async function createFirestorePost(
   author: UserProfile,
   text: string,
+  media?: PostMediaAttachment,
 ): Promise<void> {
   const trimmed = text.trim().slice(0, 2000);
-  if (!trimmed) return;
+  if (!trimmed && !media) return;
 
   const postRef = doc(collection(db, 'posts'));
   const path = `posts/${postRef.id}`;
   const safeAvatar =
     author.avatarUrl && author.avatarUrl.length <= 160000 ? author.avatarUrl : '';
 
+  const payload: Record<string, unknown> = {
+    authorId: author.id,
+    authorName: author.name.slice(0, 80),
+    authorHandle: author.handle.slice(0, 40),
+    authorAvatarUrl: safeAvatar,
+    text: trimmed,
+    likesCount: 0,
+    commentsCount: 0,
+    visibility: 'public',
+    createdAt: serverTimestamp(),
+  };
+
+  if (media) {
+    payload.mediaId = media.mediaId;
+    payload.mediaType = media.mediaType;
+    payload.mediaMimeType = media.mediaMimeType.slice(0, 80);
+    payload.mediaPoster =
+      media.mediaPoster && media.mediaPoster.length <= 120000
+        ? media.mediaPoster
+        : '';
+    payload.mediaDuration = Math.max(
+      0,
+      Math.min(60, Math.round(media.mediaDuration)),
+    );
+    payload.mediaWidth = Math.max(1, Math.min(4096, Math.round(media.mediaWidth)));
+    payload.mediaHeight = Math.max(
+      1,
+      Math.min(4096, Math.round(media.mediaHeight)),
+    );
+  }
+
   try {
-    await setDoc(postRef, {
-      authorId: author.id,
-      authorName: author.name.slice(0, 80),
-      authorHandle: author.handle.slice(0, 40),
-      authorAvatarUrl: safeAvatar,
-      text: trimmed,
-      likesCount: 0,
-      commentsCount: 0,
-      visibility: 'public',
-      createdAt: serverTimestamp(),
-    });
+    await setDoc(postRef, payload);
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, path);
+  }
+}
+
+export async function deleteFirestorePost(
+  postId: string,
+  mediaId?: string,
+): Promise<void> {
+  const path = `posts/${postId}`;
+  try {
+    await deleteDoc(doc(db, 'posts', postId));
+    if (mediaId) {
+      void deletePostMediaBestEffort(mediaId);
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
   }
 }
 

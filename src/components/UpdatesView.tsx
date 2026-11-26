@@ -1,4 +1,13 @@
-import { Crown, ExternalLink, Megaphone, Plus, Sparkles } from 'lucide-react';
+import { useState } from 'react';
+import {
+  Crown,
+  ExternalLink,
+  Image as ImageIcon,
+  Megaphone,
+  Plus,
+  Sparkles,
+  Video,
+} from 'lucide-react';
 import { ChannelRoom, Post, SponsoredPost, UserProfile } from '../types/social';
 import { Translations } from '../lib/i18n';
 import { Avatar } from './Avatar';
@@ -17,11 +26,12 @@ interface UpdatesViewProps {
   onOpenSponsoredModal: () => void;
   onOpenChannel: (channelId: string) => void;
   onToggleFollowChannel: (channelId: string, currentlyFollowing: boolean) => void;
-  onOpenPostComposer: () => void;
+  onOpenPostComposer: (initialMediaPick?: 'image' | 'video') => void;
   onToggleLike: (post: Post, currentlyLiked: boolean) => Promise<void>;
   onAddComment: (post: Post, text: string) => Promise<void>;
   onSaveAnalysis: (postId: string, analysis: string) => Promise<void>;
   onShare: (post: Post) => void;
+  onDeletePost?: (post: Post) => Promise<void>;
 }
 
 export function UpdatesView({
@@ -42,8 +52,16 @@ export function UpdatesView({
   onAddComment,
   onSaveAnalysis,
   onShare,
+  onDeletePost,
 }: UpdatesViewProps) {
+  const [feedFilter, setFeedFilter] = useState<'all' | 'video' | 'image'>('all');
   const activeAds = sponsoredPosts.filter((ad) => ad.status === 'active');
+  const videoPostsCount = posts.filter((p) => p.mediaType === 'video').length;
+  const photoPostsCount = posts.filter((p) => p.mediaType === 'image').length;
+  const filteredPosts =
+    feedFilter === 'all'
+      ? posts
+      : posts.filter((p) => p.mediaType === feedFilter);
 
   return (
     <section aria-label={t.navUpdates} className="space-y-5">
@@ -150,11 +168,11 @@ export function UpdatesView({
         )}
       </div>
 
-      {/* Quick Post Composer Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+      {/* Quick Post, Photo & Short Video Composer Card */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-3">
         <button
           type="button"
-          onClick={onOpenPostComposer}
+          onClick={() => onOpenPostComposer()}
           className="w-full text-left flex items-center gap-3.5 min-h-[48px] group"
         >
           <Avatar
@@ -176,6 +194,25 @@ export function UpdatesView({
             <span>{t.postAction}</span>
           </span>
         </button>
+
+        <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-2.5">
+          <button
+            type="button"
+            onClick={() => onOpenPostComposer('image')}
+            className="min-h-[42px] px-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs sm:text-sm font-semibold transition-colors inline-flex items-center justify-center gap-2"
+          >
+            <ImageIcon className="w-4 h-4 shrink-0" />
+            <span>{t.photoBtn}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onOpenPostComposer('video')}
+            className="min-h-[42px] px-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-800 dark:text-blue-300 text-xs sm:text-sm font-semibold transition-colors inline-flex items-center justify-center gap-2"
+          >
+            <Video className="w-4 h-4 shrink-0" />
+            <span>{t.shortVideoBtn}</span>
+          </button>
+        </div>
       </div>
 
       {/* Sponsored Posts (Admin-Managed Business Promotions) */}
@@ -247,31 +284,99 @@ export function UpdatesView({
         </div>
       )}
 
-      {/* Community Feed */}
+      {/* Community Feed & Short Videos / Photos Filter */}
       <div className="space-y-3">
-        <h3 className="px-1 font-display text-sm font-bold text-slate-700 dark:text-slate-300">
-          {t.communityFeedTitle}
-        </h3>
+        <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+          <h3 className="font-display text-sm font-bold text-slate-700 dark:text-slate-300">
+            {t.communityFeedTitle}
+          </h3>
 
-        {posts.length === 0 ? (
+          <div
+            role="tablist"
+            aria-label={t.communityFeedTitle}
+            className="inline-flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/70"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={feedFilter === 'all'}
+              onClick={() => setFeedFilter('all')}
+              className={`min-h-[32px] px-2.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
+                feedFilter === 'all'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              {t.allPostsFilter} ({posts.length})
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={feedFilter === 'video'}
+              onClick={() => setFeedFilter('video')}
+              className={`min-h-[32px] px-2.5 rounded-lg text-xs font-semibold transition-colors inline-flex items-center gap-1 whitespace-nowrap ${
+                feedFilter === 'video'
+                  ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <Video className="w-3.5 h-3.5" />
+              <span>
+                {t.shortVideosFilter} ({videoPostsCount})
+              </span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={feedFilter === 'image'}
+              onClick={() => setFeedFilter('image')}
+              className={`min-h-[32px] px-2.5 rounded-lg text-xs font-semibold transition-colors inline-flex items-center gap-1 whitespace-nowrap ${
+                feedFilter === 'image'
+                  ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <ImageIcon className="w-3.5 h-3.5" />
+              <span>
+                {t.photosFilter} ({photoPostsCount})
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {filteredPosts.length === 0 ? (
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 text-center space-y-3">
             <p className="font-display text-base font-bold text-slate-900 dark:text-slate-100">
-              {t.emptyFeedTitle}
+              {feedFilter === 'all' ? t.emptyFeedTitle : t.emptyFilteredMediaTitle}
             </p>
             <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-              {t.emptyFeedDesc}
+              {feedFilter === 'all' ? t.emptyFeedDesc : t.emptyFilteredMediaDesc}
             </p>
             <button
               type="button"
-              onClick={onOpenPostComposer}
-              className="min-h-[44px] px-5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors"
+              onClick={() =>
+                onOpenPostComposer(feedFilter === 'all' ? undefined : feedFilter)
+              }
+              className="min-h-[44px] px-5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors inline-flex items-center gap-2"
             >
-              {t.createFirstPost}
+              {feedFilter === 'video' ? (
+                <>
+                  <Video className="w-4 h-4" />
+                  <span>{t.shortVideoBtn}</span>
+                </>
+              ) : feedFilter === 'image' ? (
+                <>
+                  <ImageIcon className="w-4 h-4" />
+                  <span>{t.photoBtn}</span>
+                </>
+              ) : (
+                <span>{t.createFirstPost}</span>
+              )}
             </button>
           </div>
         ) : (
           <div className="space-y-4">
-            {posts.map((post) => {
+            {filteredPosts.map((post) => {
               const author = users.find((u) => u.id === post.authorId);
               return (
                 <PostCard
@@ -285,6 +390,7 @@ export function UpdatesView({
                   onAddComment={onAddComment}
                   onSaveAnalysis={onSaveAnalysis}
                   onShare={onShare}
+                  onDeletePost={onDeletePost}
                 />
               );
             })}

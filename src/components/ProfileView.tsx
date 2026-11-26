@@ -48,6 +48,7 @@ interface ProfileViewProps {
   onAddComment: (post: Post, text: string) => Promise<void>;
   onSaveAnalysis: (postId: string, analysis: string) => Promise<void>;
   onShare: (post: Post) => void;
+  onDeletePost?: (post: Post) => Promise<void>;
   pwa?: PWAInstallState;
   notif?: WebNotificationsState;
   onShowToast?: (msg: string) => void;
@@ -69,6 +70,7 @@ export function ProfileView({
   onAddComment,
   onSaveAnalysis,
   onShare,
+  onDeletePost,
   pwa,
   notif,
   onShowToast,
@@ -424,6 +426,7 @@ export function ProfileView({
               onAddComment={onAddComment}
               onSaveAnalysis={onSaveAnalysis}
               onShare={onShare}
+              onDeletePost={onDeletePost}
             />
           ))
         )}

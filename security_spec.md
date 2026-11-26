@@ -13,6 +13,7 @@
 10. **Presence & Avatar Safety**: `/users/{userId}` allows owners to update their profile (`name`, `bio`, `avatarUrl` up to `160000` bytes restricted to `https?://` or safe `data:image/(jpeg|jpg|png|webp);base64,`) or update their own presence (`isOnline`, `lastActiveAt == request.time`).
 11. **Direct Chat Unread Counters & Read Receipts**: `/chats/{threadId}` tracks `unreadCountA` / `unreadCountB` and `lastSenderId`; recipients may only reset their own unread counter to `0` and mark received messages `read: true` on `/chats/{threadId}/messages/{messageId}` without altering sender/text/timestamps.
 12. **Group & Channel Read Cursors**: `/users/{userId}/readStates/{roomId}` is strictly owner-scoped (`userId == request.auth.uid`), and `/groups/{groupId}/readReceipts/{userId}` verifies group membership on create/update and uses `visibleTo` on list queries.
+13. **Chunked Photo & Short-Video Media Integrity**: `/media/{mediaId}` descriptors enforce `authorId == request.auth.uid`, `mediaType in ['image', 'video']`, strict MIME allowlist, `chunkCount` (`1..30`), `totalBytes` (`1..13500000`), `durationSec` (`0..60`), and immutable ownership; `/media/{mediaId}/chunks/{chunkId}` enforces parent `/media/{mediaId}` ownership (`authorId == request.auth.uid`), bounded `index < chunkCount`, and chunk payload `data.size() <= 660000`; `/posts/{postId}` with `mediaId` must reference an existing `/media/{mediaId}` owned by the post author and keep all `media*` fields immutable on update.
 
 ## 2. Dirty Dozen Adversarial Payloads (Must Return PERMISSION_DENIED)
 1. **Unauthenticated Post Create**: `POST /posts/p1` with `request.auth == null`.
@@ -33,3 +34,6 @@
 16. **Cross-User Presence / Avatar Spoof**: User B updates `isOnline`, `avatarUrl`, or `bio` on `/users/userA`, or injects a `javascript:` / `data:text/html` URL into `avatarUrl`.
 17. **Sender Read Receipt Forgery**: User A marks their own outgoing message in `/chats/{threadId}/messages/{msgId}` as `read: true` instead of recipient User B.
 18. **Cross-User Unread Reset**: User A clears `unreadCountB` or writes `/users/userB/readStates/{roomId}`.
+19. **Orphan / Cross-User Media Attachment**: User A creates `/posts/p1` referencing `/media/m_of_userB` owned by User B or a non-existent `mediaId`.
+20. **Oversized or Unowned Media Chunk Injection**: User B writes `/media/m_of_userA/chunks/0` or injects a chunk with `index >= chunkCount` or `data.size() > 660000`.
+21. **Post Media Mutation After Publish**: User A attempts to swap `mediaId` or `mediaPoster` on an already published `/posts/p1`.

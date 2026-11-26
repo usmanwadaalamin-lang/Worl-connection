@@ -42,6 +42,13 @@ export interface Post {
   createdAt: string;
   createdAtMs: number;
   analysis?: string;
+  mediaId?: string;
+  mediaType?: 'image' | 'video';
+  mediaMimeType?: string;
+  mediaPoster?: string;
+  mediaDuration?: number;
+  mediaWidth?: number;
+  mediaHeight?: number;
 }
 
 export type CallType = 'audio' | 'video';

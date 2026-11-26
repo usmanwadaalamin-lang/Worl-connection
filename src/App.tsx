@@ -39,6 +39,7 @@ import {
   createFirestoreGroup,
   createFirestorePost,
   createSponsoredPost,
+  deleteFirestorePost,
   deleteSponsoredPost,
   ensureUserProfile,
   formatFirestoreTime,
@@ -47,6 +48,7 @@ import {
   markAllFirestoreNotificationsRead,
   markFirestoreNotificationRead,
   markRoomReadCursor,
+  PostMediaAttachment,
   resolveChannelInvite,
   revokeChannelVipAccess,
   saveFirestorePostAnalysis,
@@ -180,6 +182,9 @@ export default function App() {
     useState<ActiveConversation>({ kind: 'deep_think' });
   const [mobileThreadOpen, setMobileThreadOpen] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [composerMediaPick, setComposerMediaPick] = useState<
+    'image' | 'video' | null
+  >(null);
   const [sponsoredModalOpen, setSponsoredModalOpen] = useState(false);
   const [vipManagingChannelId, setVipManagingChannelId] = useState<
     string | null
@@ -479,6 +484,30 @@ export default function App() {
             createdAtMs: ms,
             analysis:
               typeof data.analysis === 'string' ? data.analysis : undefined,
+            mediaId:
+              typeof data.mediaId === 'string' ? data.mediaId : undefined,
+            mediaType:
+              data.mediaType === 'image' || data.mediaType === 'video'
+                ? data.mediaType
+                : undefined,
+            mediaMimeType:
+              typeof data.mediaMimeType === 'string'
+                ? data.mediaMimeType
+                : undefined,
+            mediaPoster:
+              typeof data.mediaPoster === 'string'
+                ? data.mediaPoster
+                : undefined,
+            mediaDuration:
+              typeof data.mediaDuration === 'number'
+                ? data.mediaDuration
+                : undefined,
+            mediaWidth:
+              typeof data.mediaWidth === 'number' ? data.mediaWidth : undefined,
+            mediaHeight:
+              typeof data.mediaHeight === 'number'
+                ? data.mediaHeight
+                : undefined,
           };
         });
         list.sort((a, b) => b.createdAtMs - a.createdAtMs);
@@ -1290,9 +1319,17 @@ export default function App() {
   const unreadChatsCount = unreadDmCount + unreadGroupCount + unreadChannelCount;
   const userPosts = posts.filter((p) => p.authorId === currentUser.id);
 
-  const handlePublishPost = async (text: string) => {
-    await createFirestorePost(currentUser, text);
+  const handlePublishPost = async (
+    text: string,
+    media?: PostMediaAttachment,
+  ) => {
+    await createFirestorePost(currentUser, text, media);
     setToast(t.toastPostPublished);
+  };
+
+  const handleDeletePost = async (post: Post) => {
+    await deleteFirestorePost(post.id, post.mediaId);
+    setToast(t.toastPostDeleted);
   };
 
   const handleToggleLike = async (post: Post, currentlyLiked: boolean) => {
@@ -1612,11 +1649,15 @@ export default function App() {
               onToggleFollowChannel={(channelId, currentlyFollowing) =>
                 void handleToggleFollowChannel(channelId, currentlyFollowing)
               }
-              onOpenPostComposer={() => setComposerOpen(true)}
+              onOpenPostComposer={(initialPick) => {
+                setComposerMediaPick(initialPick ?? null);
+                setComposerOpen(true);
+              }}
               onToggleLike={handleToggleLike}
               onAddComment={handleAddComment}
               onSaveAnalysis={handleSaveAnalysis}
               onShare={handleShare}
+              onDeletePost={handleDeletePost}
             />
           )}
 
@@ -1673,6 +1714,7 @@ export default function App() {
               onAddComment={handleAddComment}
               onSaveAnalysis={handleSaveAnalysis}
               onShare={handleShare}
+              onDeletePost={handleDeletePost}
               pwa={pwa}
               notif={webNotif}
               onShowToast={(msg) => setToast(msg)}
@@ -1748,12 +1790,15 @@ export default function App() {
       {/* Sabon Post Modal */}
       <CreatePostModal
         isOpen={composerOpen}
+        authorId={currentUser.id}
         authorName={currentUser.name}
+        initialMediaPick={composerMediaPick}
         t={t}
-        onClose={() => setComposerOpen(false)}
-        onPublish={(text) => {
-          void handlePublishPost(text);
+        onClose={() => {
+          setComposerOpen(false);
+          setComposerMediaPick(null);
         }}
+        onPublish={handlePublishPost}
       />
 
       {/* Create Group / Channel / Private Chat / Manage Members Modal */}
