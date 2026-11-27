@@ -4,6 +4,7 @@ import { GoogleGenAI, ThinkingLevel, Type } from '@google/genai';
 
 export interface ApiRequestLike {
   method?: string;
+  url?: string;
   body?: unknown;
   headers: Record<string, string | string[] | undefined>;
   on?: IncomingMessage['on'];
@@ -1334,4 +1335,195 @@ export async function handleShortenLink(
   }
 
   sendJson(res, 200, { shortUrl: targetUrl, targetUrl, shortened: false });
+}
+
+interface DefaultYouTubeChannel {
+  id: string;
+  label: string;
+}
+
+const DEFAULT_YOUTUBE_CHANNELS: DefaultYouTubeChannel[] = [
+  { id: 'UCZXbvNkOqOKGdaiV82_3zAQ', label: 'BBC News Hausa' },
+  { id: 'UC8butISFwT-Wl7EV0hUK0BQ', label: 'freeCodeCamp' },
+  { id: 'UCsooa4yRKGN_zEE8iknghZA', label: 'TED-Ed' },
+  { id: 'UC_x5XG1OV2P6uZZ5FSM9Ttw', label: 'Google for Developers' },
+];
+
+const YOUTUBE_CHANNEL_ID_RE = /^UC[A-Za-z0-9_-]{20,28}$/;
+const YOUTUBE_VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
+
+function decodeXmlEntities(text: string): string {
+  return text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, '/')
+    .trim();
+}
+
+function extractXmlTag(block: string, tagName: string): string {
+  const escaped = tagName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = block.match(new RegExp(`<${escaped}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${escaped}>`, 'i'));
+  return match ? decodeXmlEntities(match[1]) : '';
+}
+
+interface ParsedYouTubeFeedItem {
+  id: string;
+  title: string;
+  channelTitle: string;
+  channelId: string;
+  publishedAt: string;
+  thumbnailUrl: string;
+  description: string;
+  source: 'rss';
+}
+
+function parseYouTubeRssXml(xml: string, fallbackLabel: string): ParsedYouTubeFeedItem[] {
+  const feedChannelTitle = extractXmlTag(xml, 'title') || fallbackLabel;
+  const feedChannelId = extractXmlTag(xml, 'yt:channelId');
+  const entries = xml.match(/<entry>[\s\S]*?<\/entry>/gi) ?? [];
+  const items: ParsedYouTubeFeedItem[] = [];
+
+  for (const entry of entries.slice(0, 12)) {
+    const videoId = extractXmlTag(entry, 'yt:videoId');
+    if (!YOUTUBE_VIDEO_ID_RE.test(videoId)) continue;
+
+    const title = extractXmlTag(entry, 'title');
+    if (!title) continue;
+
+    const authorName = extractXmlTag(entry, 'name') || feedChannelTitle;
+    const channelId = extractXmlTag(entry, 'yt:channelId') || feedChannelId;
+    const publishedAt = extractXmlTag(entry, 'published') || extractXmlTag(entry, 'updated');
+    const description = extractXmlTag(entry, 'media:description').slice(0, 260);
+    const thumbMatch = entry.match(/<media:thumbnail[^>]+url=["']([^"']+)["']/i);
+    const rawThumb = thumbMatch ? decodeXmlEntities(thumbMatch[1]) : '';
+    const thumbnailUrl = /^https:\/\/i[0-9]?\.ytimg\.com\//i.test(rawThumb)
+      ? rawThumb
+      : `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+
+    items.push({
+      id: videoId,
+      title,
+      channelTitle: authorName,
+      channelId,
+      publishedAt,
+      thumbnailUrl,
+      description,
+      source: 'rss',
+    });
+  }
+
+  return items;
+}
+
+async function fetchSingleYouTubeRssChannel(
+  channelId: string,
+  fallbackLabel: string,
+): Promise<ParsedYouTubeFeedItem[]> {
+  if (!YOUTUBE_CHANNEL_ID_RE.test(channelId)) {
+    return [];
+  }
+  const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(channelId)}`;
+  const res = await fetch(rssUrl, {
+    method: 'GET',
+    signal: AbortSignal.timeout(7000),
+    headers: {
+      'User-Agent': 'WorldConnection/1.0',
+      Accept: 'application/atom+xml, application/xml, text/xml',
+    },
+  });
+  if (!res.ok) {
+    throw new Error(`RSS feed returned HTTP ${res.status}`);
+  }
+  const xml = await res.text();
+  return parseYouTubeRssXml(xml, fallbackLabel);
+}
+
+export async function handleYouTube(
+  req: ApiRequestLike | IncomingMessage,
+  res: ApiResponseLike | ServerResponse,
+): Promise<void> {
+  const method = (req.method || 'GET').toUpperCase();
+  if (method === 'OPTIONS') {
+    const anyRes = res as ApiResponseLike;
+    anyRes.statusCode = 204;
+    if (typeof anyRes.status === 'function') {
+      anyRes.status(204);
+    }
+    if (typeof anyRes.end === 'function') {
+      anyRes.end();
+    }
+    return;
+  }
+  if (method !== 'GET') {
+    sendJson(res, 405, { error: 'Method not allowed. Use GET.' });
+    return;
+  }
+
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(req.url || '/api/youtube', 'https://localhost');
+  } catch {
+    sendJson(res, 400, { error: 'Invalid request URL.' });
+    return;
+  }
+
+  const rawChannelId = (parsedUrl.searchParams.get('channelId') || '').trim();
+  const rawQuery = (parsedUrl.searchParams.get('q') || '').trim().slice(0, 120);
+
+  if (rawChannelId && !YOUTUBE_CHANNEL_ID_RE.test(rawChannelId)) {
+    sendJson(res, 400, {
+      error: 'Invalid YouTube Channel ID format. Expected an ID starting with "UC".',
+    });
+    return;
+  }
+
+  const targets: DefaultYouTubeChannel[] = rawChannelId
+    ? [{ id: rawChannelId, label: rawChannelId }]
+    : DEFAULT_YOUTUBE_CHANNELS;
+
+  const settled = await Promise.allSettled(
+    targets.map((ch) => fetchSingleYouTubeRssChannel(ch.id, ch.label)),
+  );
+
+  const seenIds = new Set<string>();
+  const collected: ParsedYouTubeFeedItem[] = [];
+  for (const outcome of settled) {
+    if (outcome.status !== 'fulfilled') continue;
+    for (const item of outcome.value) {
+      if (seenIds.has(item.id)) continue;
+      seenIds.add(item.id);
+      collected.push(item);
+    }
+  }
+
+  collected.sort((a, b) => {
+    const ta = a.publishedAt ? Date.parse(a.publishedAt) || 0 : 0;
+    const tb = b.publishedAt ? Date.parse(b.publishedAt) || 0 : 0;
+    return tb - ta;
+  });
+
+  const lowerQ = rawQuery.toLowerCase();
+  const filtered = lowerQ
+    ? collected.filter(
+        (v) =>
+          v.title.toLowerCase().includes(lowerQ) ||
+          v.channelTitle.toLowerCase().includes(lowerQ) ||
+          v.description.toLowerCase().includes(lowerQ),
+      )
+    : collected;
+
+  const anyRes = res as ApiResponseLike;
+  if (typeof anyRes.setHeader === 'function') {
+    anyRes.setHeader('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=300');
+  }
+
+  sendJson(res, 200, {
+    videos: filtered.slice(0, 24),
+    channels: DEFAULT_YOUTUBE_CHANNELS,
+    source: 'rss',
+  });
 }

@@ -6,12 +6,14 @@ import {
   Megaphone,
   Plus,
   Sparkles,
+  Tv,
   Video,
 } from 'lucide-react';
 import { ChannelRoom, Post, SponsoredPost, UserProfile } from '../types/social';
 import { Translations } from '../lib/i18n';
 import { Avatar } from './Avatar';
 import { PostCard } from './PostCard';
+import { YouTubeWatchTab } from './YouTubeWatchTab';
 
 interface UpdatesViewProps {
   channels: ChannelRoom[];
@@ -32,6 +34,8 @@ interface UpdatesViewProps {
   onSaveAnalysis: (postId: string, analysis: string) => Promise<void>;
   onShare: (post: Post) => void;
   onDeletePost?: (post: Post) => Promise<void>;
+  subTab?: 'community' | 'youtube';
+  onSubTabChange?: (subTab: 'community' | 'youtube') => void;
 }
 
 export function UpdatesView({
@@ -53,7 +57,15 @@ export function UpdatesView({
   onSaveAnalysis,
   onShare,
   onDeletePost,
+  subTab,
+  onSubTabChange,
 }: UpdatesViewProps) {
+  const [internalSubTab, setInternalSubTab] = useState<'community' | 'youtube'>('community');
+  const updatesSubTab = subTab ?? internalSubTab;
+  const setUpdatesSubTab = (next: 'community' | 'youtube') => {
+    setInternalSubTab(next);
+    onSubTabChange?.(next);
+  };
   const [feedFilter, setFeedFilter] = useState<'all' | 'video' | 'image'>('all');
   const activeAds = sponsoredPosts.filter((ad) => ad.status === 'active');
   const videoPostsCount = posts.filter((p) => p.mediaType === 'video').length;
@@ -65,6 +77,46 @@ export function UpdatesView({
 
   return (
     <section aria-label={t.navUpdates} className="space-y-5">
+      {/* Top Sub-Tab Pills: Community Posts vs YouTube Videos */}
+      <div
+        role="tablist"
+        aria-label={t.navUpdates}
+        className="grid grid-cols-2 gap-1.5 p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={updatesSubTab === 'community'}
+          onClick={() => setUpdatesSubTab('community')}
+          className={`min-h-[42px] px-3 rounded-xl text-xs sm:text-sm font-bold transition-colors inline-flex items-center justify-center gap-2 ${
+            updatesSubTab === 'community'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Megaphone className="w-4 h-4 shrink-0" />
+          <span className="truncate">{t.communityPostsSubTab}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={updatesSubTab === 'youtube'}
+          onClick={() => setUpdatesSubTab('youtube')}
+          className={`min-h-[42px] px-3 rounded-xl text-xs sm:text-sm font-bold transition-colors inline-flex items-center justify-center gap-2 ${
+            updatesSubTab === 'youtube'
+              ? 'bg-rose-600 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Tv className="w-4 h-4 shrink-0" />
+          <span className="truncate">{t.youtubeVideosSubTab}</span>
+        </button>
+      </div>
+
+      {updatesSubTab === 'youtube' ? (
+        <YouTubeWatchTab t={t} />
+      ) : (
+        <>
       {/* Channels Section (WhatsApp Updates Style) */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
         <div className="flex items-center justify-between gap-3">
@@ -397,6 +449,8 @@ export function UpdatesView({
           </div>
         )}
       </div>
+        </>
+      )}
     </section>
   );
 }

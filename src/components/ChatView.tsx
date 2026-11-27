@@ -71,6 +71,8 @@ import {
   translateChatMessage,
   TranslationTarget,
 } from '../lib/thinkApi';
+import { extractYouTubeVideoIds } from '../lib/youtube';
+import { YouTubeEmbed } from './YouTubeEmbed';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import {
   compressReceiptImage,
@@ -2609,6 +2611,11 @@ export function ChatView({
                           msg.text
                         )}
                       </div>
+                      {!msg.audioData &&
+                        msg.text &&
+                        extractYouTubeVideoIds(msg.text).map((vid) => (
+                          <YouTubeEmbed key={vid} videoId={vid} compact />
+                        ))}
                       <div className="mt-1 px-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-400 tabular-nums">
                         <span>{msg.timestamp}</span>
                         {isMe && (
@@ -2729,6 +2736,11 @@ export function ChatView({
                           msg.text
                         )}
                       </div>
+                      {!msg.audioData &&
+                        msg.text &&
+                        extractYouTubeVideoIds(msg.text).map((vid) => (
+                          <YouTubeEmbed key={vid} videoId={vid} compact />
+                        ))}
                       <div className="mt-1 px-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-400 tabular-nums">
                         <span>{msg.timestamp}</span>
                         {isMe && (
@@ -3235,9 +3247,15 @@ export function ChatView({
                             label={t.voiceMessageLabel}
                           />
                         ) : (
-                          <p className="text-sm text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-wrap break-words">
-                            {item.text}
-                          </p>
+                          <>
+                            <p className="text-sm text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-wrap break-words">
+                              {item.text}
+                            </p>
+                            {item.text &&
+                              extractYouTubeVideoIds(item.text).map((vid) => (
+                                <YouTubeEmbed key={vid} videoId={vid} />
+                              ))}
+                          </>
                         )}
                         <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 tabular-nums">
                           <div className="flex flex-wrap items-center gap-2">

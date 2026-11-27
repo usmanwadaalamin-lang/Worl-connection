@@ -372,6 +372,24 @@ export interface Translations {
   toastPostDeleted: string;
   emptyFilteredMediaTitle: string;
   emptyFilteredMediaDesc: string;
+  // YouTube Watch & Auto-Embed
+  communityPostsSubTab: string;
+  youtubeVideosSubTab: string;
+  ytTabTitle: string;
+  ytTabSubtitle: string;
+  ytSearchPlaceholder: string;
+  ytSearchBtn: string;
+  ytRefreshBtn: string;
+  ytAllChannelsChip: string;
+  ytNowPlayingLabel: string;
+  ytDirectVideoTitle: string;
+  ytLoadingLabel: string;
+  ytNoVideosTitle: string;
+  ytNoVideosDesc: string;
+  ytLoadErrorFallback: string;
+  ytApiNotEnabledNotice: string;
+  ytApiQuotaNotice: string;
+  ytRssModeNotice: string;
 }
 
 const HAUSA: Translations = {
@@ -748,6 +766,26 @@ const HAUSA: Translations = {
   toastPostDeleted: 'An goge rubutun!',
   emptyFilteredMediaTitle: 'Babu abin da aka ɗaura a nan tukuna',
   emptyFilteredMediaDesc: 'Fara ɗaura hoto ko gajeran bidiyo domin al’umma su gani.',
+  communityPostsSubTab: 'Rubutun Al’umma',
+  youtubeVideosSubTab: 'Bidiyon YouTube',
+  ytTabTitle: 'Kalli Bidiyon YouTube',
+  ytTabSubtitle: 'Nemo ko kalli bidiyoyi kai-tsaye a cikin World Connection',
+  ytSearchPlaceholder: 'Nemi bidiyo, liƙa link na YouTube, ko Channel ID (UC...)',
+  ytSearchBtn: 'Nema',
+  ytRefreshBtn: 'Sabunta',
+  ytAllChannelsChip: 'Duk Tashoshi',
+  ytNowPlayingLabel: 'Ana Nunawa Yanzu',
+  ytDirectVideoTitle: 'Bidiyon YouTube Kai-tsaye',
+  ytLoadingLabel: 'Ana kawo bidiyoyi...',
+  ytNoVideosTitle: 'Ba a sami bidiyo ba',
+  ytNoVideosDesc: 'Gwada wata kalmar nema, ko zaɓi ɗaya daga cikin tashoshin sama, ko liƙa link na YouTube.',
+  ytLoadErrorFallback: 'Ba a iya kawo bidiyon YouTube a yanzu ba. Sake gwadawa.',
+  ytApiNotEnabledNotice:
+    'Ba a kunna YouTube Data API v3 a maɓallinka tukuna ba — ana amfani da tashoshin RSS kyauta ba tare da iyaka ba.',
+  ytApiQuotaNotice:
+    'Iyakar neman YouTube API ta cika na dan lokaci — ana amfani da tashoshin RSS kyauta.',
+  ytRssModeNotice:
+    'Ana nuna sabbin bidiyoyi daga tashoshin RSS kyauta. Hakanan za ka iya liƙa kowane link na YouTube ko Channel ID (UC...).',
 };
 
 const ENGLISH: Translations = {
@@ -1124,6 +1162,26 @@ const ENGLISH: Translations = {
   toastPostDeleted: 'Post deleted!',
   emptyFilteredMediaTitle: 'Nothing posted here yet',
   emptyFilteredMediaDesc: 'Upload a photo or short video to share with the community.',
+  communityPostsSubTab: 'Community Posts',
+  youtubeVideosSubTab: 'YouTube Videos',
+  ytTabTitle: 'Watch YouTube Videos',
+  ytTabSubtitle: 'Search and watch YouTube videos directly inside World Connection',
+  ytSearchPlaceholder: 'Search videos, paste a YouTube link, or Channel ID (UC...)',
+  ytSearchBtn: 'Search',
+  ytRefreshBtn: 'Refresh',
+  ytAllChannelsChip: 'All Channels',
+  ytNowPlayingLabel: 'Now Playing',
+  ytDirectVideoTitle: 'YouTube Video',
+  ytLoadingLabel: 'Loading YouTube videos...',
+  ytNoVideosTitle: 'No matching videos found',
+  ytNoVideosDesc: 'Try another search term, choose a curated channel above, or paste a YouTube link or Channel ID.',
+  ytLoadErrorFallback: 'Unable to load YouTube videos right now. Please try again.',
+  ytApiNotEnabledNotice:
+    'YouTube Data API v3 is not enabled on this API key yet — showing free, zero-quota YouTube RSS channel feeds smoothly.',
+  ytApiQuotaNotice:
+    'YouTube API daily quota is temporarily reached — showing free, zero-quota RSS channel feeds.',
+  ytRssModeNotice:
+    'Showing fresh videos from free zero-quota YouTube channel feeds. You can also paste any YouTube link or Channel ID (UC...).',
 };
 
 export function getTranslations(lang: Language): Translations {

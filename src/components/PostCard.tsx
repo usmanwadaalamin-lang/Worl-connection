@@ -25,6 +25,8 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { formatFirestoreTime } from '../lib/firestoreSocial';
 import { formatMediaDuration, loadPostMediaUrl } from '../lib/mediaPosts';
 import { Translations } from '../lib/i18n';
+import { extractYouTubeVideoIds } from '../lib/youtube';
+import { YouTubeEmbed } from './YouTubeEmbed';
 
 interface PostCardProps {
   post: Post;
@@ -201,6 +203,7 @@ export function PostCard({
   const avatarSrc = author?.avatarUrl || post.authorAvatarUrl;
   const displayImageSrc = resolvedMediaUrl || post.mediaPoster || '';
   const isOwner = post.authorId === currentUserId;
+  const youtubeVideoIds = post.text ? extractYouTubeVideoIds(post.text) : [];
 
   return (
     <article className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 transition-colors">
@@ -272,6 +275,14 @@ export function PostCard({
               {post.text}
             </p>
           )}
+
+          {youtubeVideoIds.map((vid) => (
+            <YouTubeEmbed
+              key={vid}
+              videoId={vid}
+              title={`YouTube video shared by ${post.user}`}
+            />
+          ))}
 
           {/* Photo Attachment */}
           {post.mediaType === 'image' && displayImageSrc && (

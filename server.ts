@@ -11,6 +11,7 @@ import {
   handleTranslate,
   handleVerifyEmailDomain,
   handleVerifyReceipt,
+  handleYouTube,
 } from './server/apiHandlers.ts';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -29,6 +30,7 @@ async function startServer() {
   app.post('/api/transcribe', handleTranscribe);
   app.post('/api/summarize-chat', handleSummarizeChat);
   app.post('/api/shorten-link', handleShortenLink);
+  app.get('/api/youtube', handleYouTube);
 
   app.all('/api/*', (_req, res) => {
     res.status(404).json({ error: 'API endpoint not found.' });

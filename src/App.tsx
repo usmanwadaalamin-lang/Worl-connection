@@ -15,6 +15,7 @@ import {
   LogOut,
   MessageSquare,
   Plus,
+  Tv,
   User as UserIcon,
   Users,
 } from 'lucide-react';
@@ -141,6 +142,7 @@ export default function App() {
   const [isEmailVerified, setIsEmailVerified] = useState(false);
 
   const [tab, setTab] = useState<TabId>('chat');
+  const [updatesSubTab, setUpdatesSubTab] = useState<'community' | 'youtube'>('community');
   const [rawUsers, setRawUsers] = useState<
     Array<Omit<UserProfile, 'following' | 'followersCount' | 'followingCount'>>
   >([]);
@@ -1456,12 +1458,30 @@ export default function App() {
             {t.appName}
           </button>
 
-          <div className="flex items-center shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setUpdatesSubTab('youtube');
+                setMobileThreadOpen(false);
+                setTab('updates');
+              }}
+              aria-label={t.youtubeVideosSubTab}
+              className={`min-h-[38px] px-3 rounded-full text-xs font-bold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors border ${
+                tab === 'updates' && updatesSubTab === 'youtube'
+                  ? 'bg-rose-600 text-white border-rose-600'
+                  : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/70 hover:bg-rose-100 dark:hover:bg-rose-900/50'
+              }`}
+            >
+              <Tv className="w-3.5 h-3.5" />
+              <span>YouTube</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setComposerOpen(true)}
               aria-label={t.newPost}
-              className="min-h-[40px] px-3.5 rounded-full bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+              className="min-h-[38px] px-3 rounded-full bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
             >
               <Plus className="w-4 h-4" />
               <span>{t.newPost}</span>
@@ -1532,6 +1552,22 @@ export default function App() {
             >
               <Plus className="w-4 h-4" />
               <span>{t.createPost}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setUpdatesSubTab('youtube');
+                setTab('updates');
+              }}
+              className={`mt-2 w-full min-h-[42px] px-4 rounded-xl text-sm font-semibold transition-colors inline-flex items-center justify-center gap-2 whitespace-nowrap border ${
+                tab === 'updates' && updatesSubTab === 'youtube'
+                  ? 'bg-rose-600 text-white border-rose-600'
+                  : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60 hover:bg-rose-100 dark:hover:bg-rose-900/50'
+              }`}
+            >
+              <Tv className="w-4 h-4" />
+              <span>{t.youtubeVideosSubTab}</span>
             </button>
 
             <div className="mt-4">
@@ -1658,6 +1694,8 @@ export default function App() {
               onSaveAnalysis={handleSaveAnalysis}
               onShare={handleShare}
               onDeletePost={handleDeletePost}
+              subTab={updatesSubTab}
+              onSubTabChange={setUpdatesSubTab}
             />
           )}
 
