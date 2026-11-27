@@ -15,7 +15,6 @@ import {
   extractYouTubeChannelId,
   extractYouTubeVideoIdFromUrl,
   fetchYouTubeVideos,
-  YouTubeApiNoticeKind,
   YouTubeVideoItem,
 } from '../lib/youtube';
 import { YouTubeEmbed } from './YouTubeEmbed';
@@ -45,7 +44,6 @@ export function YouTubeWatchTab({ t }: YouTubeWatchTabProps) {
   const [videos, setVideos] = useState<YouTubeVideoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [noticeKind, setNoticeKind] = useState<YouTubeApiNoticeKind>('none');
   const [activeVideo, setActiveVideo] = useState<YouTubeVideoItem | null>(null);
   const [feedSource, setFeedSource] = useState<'api' | 'rss'>('rss');
 
@@ -61,8 +59,8 @@ export function YouTubeWatchTab({ t }: YouTubeWatchTabProps) {
         });
         setVideos(result.videos);
         setFeedSource(result.source);
-        setNoticeKind(result.noticeKind);
       } catch (err) {
+        setVideos([]);
         setError(extractReadableError(err, t.ytLoadErrorFallback));
       } finally {
         setLoading(false);
@@ -115,15 +113,6 @@ export function YouTubeWatchTab({ t }: YouTubeWatchTabProps) {
     setActiveQuery('');
     setActiveChannelId('');
   };
-
-  const noticeText =
-    noticeKind === 'api_not_enabled_using_rss'
-      ? t.ytApiNotEnabledNotice
-      : noticeKind === 'quota_using_rss'
-        ? t.ytApiQuotaNotice
-        : noticeKind === 'no_key_using_rss'
-          ? t.ytRssModeNotice
-          : null;
 
   return (
     <div className="space-y-4">
@@ -232,13 +221,6 @@ export function YouTubeWatchTab({ t }: YouTubeWatchTabProps) {
             );
           })}
         </div>
-
-        {noticeText && (
-          <div className="rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 px-3 py-2 text-xs text-slate-600 dark:text-slate-300 flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-            <span className="leading-relaxed">{noticeText}</span>
-          </div>
-        )}
       </div>
 
       {/* Active Embedded In-App Player */}
@@ -273,28 +255,44 @@ export function YouTubeWatchTab({ t }: YouTubeWatchTabProps) {
         </div>
       )}
 
-      {/* Video Feed Grid */}
+      {/* Video Feed Grid / Clear Error Banner */}
       {loading ? (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-10 flex flex-col items-center justify-center gap-2 text-slate-500 dark:text-slate-400">
           <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
           <p className="text-sm font-medium">{t.ytLoadingLabel}</p>
         </div>
       ) : error ? (
-        <div className="bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-2xl p-6 text-center space-y-3">
-          <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>
-          <button
-            type="button"
-            onClick={() =>
-              void loadFeed({
-                query: activeQuery,
-                channelId: activeChannelId,
-                bypassCache: true,
-              })
-            }
-            className="min-h-[40px] px-4 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors"
-          >
-            {t.ytRefreshBtn}
-          </button>
+        <div className="bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-2xl p-5 sm:p-6 text-center space-y-3">
+          <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
+            <AlertCircle className="w-5 h-5" />
+          </div>
+          <p className="text-sm text-rose-700 dark:text-rose-300 leading-relaxed max-w-lg mx-auto break-words">
+            {error}
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                void loadFeed({
+                  query: activeQuery,
+                  channelId: activeChannelId,
+                  bypassCache: true,
+                })
+              }
+              className="min-h-[40px] px-4 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors"
+            >
+              {t.ytRefreshBtn}
+            </button>
+            {activeQuery && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="min-h-[40px] px-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              >
+                {t.ytAllChannelsChip}
+              </button>
+            )}
+          </div>
         </div>
       ) : videos.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 text-center space-y-2">

@@ -1442,6 +1442,42 @@ async function fetchSingleYouTubeRssChannel(
   return parseYouTubeRssXml(xml, fallbackLabel);
 }
 
+function getServerYouTubeApiKey(): string {
+  const raw =
+    process.env.YOUTUBE_API_KEY || process.env.VITE_YOUTUBE_API_KEY || '';
+  return String(raw).trim().replace(/^["']|["']$/g, '');
+}
+
+function cleanYouTubeApiErrorMessage(raw: unknown, statusCode: number): string {
+  let msg = '';
+  if (raw && typeof raw === 'object') {
+    const record = raw as {
+      error?: { message?: unknown; errors?: Array<{ message?: unknown }> } | unknown;
+      message?: unknown;
+    };
+    if (
+      record.error &&
+      typeof record.error === 'object' &&
+      'message' in record.error &&
+      typeof (record.error as { message?: unknown }).message === 'string'
+    ) {
+      msg = (record.error as { message: string }).message;
+    } else if (typeof record.message === 'string') {
+      msg = record.message;
+    }
+  } else if (typeof raw === 'string') {
+    msg = raw;
+  }
+
+  const plain = decodeXmlEntities(msg.replace(/<[^>]+>/g, ' '))
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (plain) {
+    return plain.length > 220 ? `${plain.slice(0, 220)}...` : plain;
+  }
+  return `YouTube API returned HTTP ${statusCode}.`;
+}
+
 export async function handleYouTube(
   req: ApiRequestLike | IncomingMessage,
   res: ApiResponseLike | ServerResponse,
@@ -1481,6 +1517,102 @@ export async function handleYouTube(
     return;
   }
 
+  // Full YouTube search via YouTube Data API v3 when a search query is provided (without channelId)
+  if (rawQuery && !rawChannelId) {
+    const apiKey = getServerYouTubeApiKey();
+    if (!apiKey) {
+      sendJson(res, 400, {
+        error:
+          'YouTube search requires YOUTUBE_API_KEY or VITE_YOUTUBE_API_KEY in Vercel Environment Variables.',
+      });
+      return;
+    }
+
+    try {
+      const searchUrl = `https://www.googleapis.com/youtube/v3/search?${new URLSearchParams({
+        part: 'snippet',
+        type: 'video',
+        videoEmbeddable: 'true',
+        safeSearch: 'moderate',
+        maxResults: '12',
+        q: rawQuery,
+        key: apiKey,
+      }).toString()}`;
+
+      const apiRes = await fetch(searchUrl, {
+        method: 'GET',
+        signal: AbortSignal.timeout(9000),
+      });
+      const apiData = (await apiRes.json().catch(() => ({}))) as {
+        items?: Array<{
+          id?: string | { videoId?: string };
+          snippet?: {
+            title?: string;
+            channelTitle?: string;
+            channelId?: string;
+            publishedAt?: string;
+            description?: string;
+            thumbnails?: {
+              high?: { url?: string };
+              medium?: { url?: string };
+              default?: { url?: string };
+            };
+          };
+        }>;
+        error?: unknown;
+      };
+
+      if (!apiRes.ok) {
+        const shortErr = cleanYouTubeApiErrorMessage(apiData, apiRes.status);
+        const safeStatus = apiRes.status === 403 ? 400 : toSafeApiErrorStatus(apiRes.status);
+        sendJson(res, safeStatus, { error: shortErr });
+        return;
+      }
+
+      const videos: Array<Omit<ParsedYouTubeFeedItem, 'source'> & { source: 'api' }> = [];
+      for (const item of apiData.items || []) {
+        const videoId =
+          typeof item.id === 'string' ? item.id : item.id?.videoId || '';
+        const title = item.snippet?.title ? decodeXmlEntities(item.snippet.title) : '';
+        if (!YOUTUBE_VIDEO_ID_RE.test(videoId) || !title) continue;
+
+        const thumb =
+          item.snippet?.thumbnails?.high?.url ||
+          item.snippet?.thumbnails?.medium?.url ||
+          item.snippet?.thumbnails?.default?.url ||
+          `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+
+        videos.push({
+          id: videoId,
+          title,
+          channelTitle: decodeXmlEntities(item.snippet?.channelTitle || 'YouTube'),
+          channelId: item.snippet?.channelId || '',
+          publishedAt: item.snippet?.publishedAt || '',
+          thumbnailUrl: thumb,
+          description: decodeXmlEntities(item.snippet?.description || '').slice(0, 260),
+          source: 'api',
+        });
+      }
+
+      const anyRes = res as ApiResponseLike;
+      if (typeof anyRes.setHeader === 'function') {
+        anyRes.setHeader('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=300');
+      }
+
+      sendJson(res, 200, {
+        videos,
+        channels: DEFAULT_YOUTUBE_CHANNELS,
+        source: 'api',
+      });
+      return;
+    } catch (err) {
+      sendJson(res, 500, {
+        error: cleanYouTubeApiErrorMessage(err, 500),
+      });
+      return;
+    }
+  }
+
   const targets: DefaultYouTubeChannel[] = rawChannelId
     ? [{ id: rawChannelId, label: rawChannelId }]
     : DEFAULT_YOUTUBE_CHANNELS;
@@ -1506,23 +1638,13 @@ export async function handleYouTube(
     return tb - ta;
   });
 
-  const lowerQ = rawQuery.toLowerCase();
-  const filtered = lowerQ
-    ? collected.filter(
-        (v) =>
-          v.title.toLowerCase().includes(lowerQ) ||
-          v.channelTitle.toLowerCase().includes(lowerQ) ||
-          v.description.toLowerCase().includes(lowerQ),
-      )
-    : collected;
-
   const anyRes = res as ApiResponseLike;
   if (typeof anyRes.setHeader === 'function') {
     anyRes.setHeader('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=300');
   }
 
   sendJson(res, 200, {
-    videos: filtered.slice(0, 24),
+    videos: collected.slice(0, 24),
     channels: DEFAULT_YOUTUBE_CHANNELS,
     source: 'rss',
   });

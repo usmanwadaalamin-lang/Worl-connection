@@ -25,7 +25,7 @@ export const CURATED_YOUTUBE_CHANNELS: YouTubeChannelPreset[] = [
 
 const VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
 const CHANNEL_ID_RE = /^UC[A-Za-z0-9_-]{20,28}$/;
-const CACHE_PREFIX = 'wc_yt_cache_v1:';
+const CACHE_PREFIX = 'wc_yt_cache_v2:';
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
 const URL_IN_TEXT_RE = /https?:\/\/[^\s<>"')\]}]+/gi;
@@ -156,18 +156,10 @@ function writeCachedFeed(
   }
 }
 
-export type YouTubeApiNoticeKind =
-  | 'none'
-  | 'no_key_using_rss'
-  | 'api_not_enabled_using_rss'
-  | 'quota_using_rss';
-
 export interface YouTubeFeedResult {
   videos: YouTubeVideoItem[];
   source: 'api' | 'rss';
   fromCache: boolean;
-  noticeKind: YouTubeApiNoticeKind;
-  noticeDetail?: string;
 }
 
 function decodeHtmlEntitiesClient(str: string): string {
@@ -179,69 +171,72 @@ function decodeHtmlEntitiesClient(str: string): string {
     .replace(/&#39;/g, "'");
 }
 
-function getBrowserYouTubeApiKey(): string {
+function cleanPlainApiError(errPayload: unknown, fallback: string): string {
+  const raw = extractReadableError(errPayload, fallback);
+  const plain = decodeHtmlEntitiesClient(raw.replace(/<[^>]+>/g, ' '))
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!plain) return fallback;
+  return plain.length > 220 ? `${plain.slice(0, 220)}...` : plain;
+}
+
+function getClientYouTubeApiKey(): string {
   const ytKey =
     typeof import.meta !== 'undefined' && import.meta.env?.VITE_YOUTUBE_API_KEY
       ? String(import.meta.env.VITE_YOUTUBE_API_KEY)
       : '';
-  const geminiKey =
-    typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_API_KEY
-      ? String(import.meta.env.VITE_GEMINI_API_KEY)
-      : '';
-  return (ytKey || geminiKey).trim().replace(/^["']|["']$/g, '');
+  return ytKey.trim().replace(/^["']|["']$/g, '');
 }
 
-async function fetchRssFallback(params: {
+async function fetchBackendYouTubeEndpoint(params: {
   channelId?: string;
   query?: string;
-}): Promise<YouTubeVideoItem[]> {
+}): Promise<{ videos: YouTubeVideoItem[]; source: 'api' | 'rss' }> {
   const search = new URLSearchParams();
   if (params.channelId) search.set('channelId', params.channelId);
   if (params.query) search.set('q', params.query);
   const qs = search.toString();
+
   const res = await fetch(`/api/youtube${qs ? `?${qs}` : ''}`, {
     method: 'GET',
     headers: { Accept: 'application/json' },
   });
   const text = await res.text().catch(() => '');
-  let payload: { videos?: unknown; error?: unknown } = {};
+  let payload: { videos?: unknown; source?: unknown; error?: unknown } = {};
   try {
-    payload = text ? (JSON.parse(text) as { videos?: unknown; error?: unknown }) : {};
+    payload = text
+      ? (JSON.parse(text) as { videos?: unknown; source?: unknown; error?: unknown })
+      : {};
   } catch {
     payload = {};
   }
   if (!res.ok) {
     throw new Error(
-      extractReadableError(payload, `Unable to load YouTube channel feed (HTTP ${res.status}).`),
+      cleanPlainApiError(
+        payload,
+        `Unable to load YouTube videos (HTTP ${res.status}).`,
+      ),
     );
   }
-  return Array.isArray(payload.videos) ? (payload.videos as YouTubeVideoItem[]) : [];
+  return {
+    videos: Array.isArray(payload.videos) ? (payload.videos as YouTubeVideoItem[]) : [],
+    source: payload.source === 'api' ? 'api' : 'rss',
+  };
 }
 
-async function fetchViaYouTubeDataApiV3(params: {
+async function searchClientYouTubeDataApiV3(params: {
   apiKey: string;
-  query?: string;
-}): Promise<{
-  videos: YouTubeVideoItem[];
-  noticeKind: YouTubeApiNoticeKind;
-  noticeDetail?: string;
-}> {
-  const endpoint = params.query
-    ? `https://www.googleapis.com/youtube/v3/search?${new URLSearchParams({
-        part: 'snippet',
-        type: 'video',
-        videoEmbeddable: 'true',
-        safeSearch: 'moderate',
-        maxResults: '12',
-        q: params.query,
-        key: params.apiKey,
-      }).toString()}`
-    : `https://www.googleapis.com/youtube/v3/videos?${new URLSearchParams({
-        part: 'snippet',
-        chart: 'mostPopular',
-        maxResults: '12',
-        key: params.apiKey,
-      }).toString()}`;
+  query: string;
+}): Promise<YouTubeVideoItem[]> {
+  const endpoint = `https://www.googleapis.com/youtube/v3/search?${new URLSearchParams({
+    part: 'snippet',
+    type: 'video',
+    videoEmbeddable: 'true',
+    safeSearch: 'moderate',
+    maxResults: '12',
+    q: params.query,
+    key: params.apiKey,
+  }).toString()}`;
 
   const res = await fetch(endpoint, { method: 'GET' });
   const data = (await res.json().catch(() => ({}))) as {
@@ -260,33 +255,13 @@ async function fetchViaYouTubeDataApiV3(params: {
         };
       };
     }>;
-    error?: {
-      code?: number;
-      message?: string;
-      errors?: Array<{ reason?: string; message?: string }>;
-    };
+    error?: unknown;
   };
 
   if (!res.ok) {
-    const reasons = (data.error?.errors || []).map((e) => (e.reason || '').toLowerCase());
-    const msg = extractReadableError(data, `YouTube API HTTP ${res.status}`);
-    const lower = msg.toLowerCase();
-    if (
-      res.status === 429 ||
-      reasons.some((r) => r.includes('quota') || r.includes('ratelimit')) ||
-      lower.includes('quota')
-    ) {
-      return {
-        videos: [],
-        noticeKind: 'quota_using_rss',
-        noticeDetail: msg,
-      };
-    }
-    return {
-      videos: [],
-      noticeKind: 'api_not_enabled_using_rss',
-      noticeDetail: msg,
-    };
+    throw new Error(
+      cleanPlainApiError(data, `YouTube Data API returned HTTP ${res.status}.`),
+    );
   }
 
   const videos: YouTubeVideoItem[] = [];
@@ -311,10 +286,7 @@ async function fetchViaYouTubeDataApiV3(params: {
     });
   }
 
-  return {
-    videos,
-    noticeKind: 'none',
-  };
+  return videos;
 }
 
 export async function fetchYouTubeVideos(options: {
@@ -324,7 +296,7 @@ export async function fetchYouTubeVideos(options: {
 }): Promise<YouTubeFeedResult> {
   const query = (options.query || '').trim();
   const channelId = (options.channelId || '').trim();
-  const cacheKey = `${channelId || 'all'}:${query.toLowerCase()}`;
+  const cacheKey = `${channelId || (query ? 'search' : 'rss-all')}:${query.toLowerCase()}`;
 
   if (!options.bypassCache) {
     const cached = readCachedFeed(cacheKey);
@@ -333,67 +305,49 @@ export async function fetchYouTubeVideos(options: {
         videos: cached.videos,
         source: cached.source,
         fromCache: true,
-        noticeKind: 'none',
       };
     }
   }
 
-  // Channel ID requests always use the zero-quota public RSS feed endpoint.
-  if (channelId) {
-    const rssVideos = await fetchRssFallback({ channelId, query });
-    writeCachedFeed(cacheKey, rssVideos, 'rss');
+  // 1. Channel ID or empty default feed: always use zero-quota RSS feeds
+  if (channelId || !query) {
+    const rssRes = await fetchBackendYouTubeEndpoint({ channelId });
+    if (rssRes.videos.length > 0) {
+      writeCachedFeed(cacheKey, rssRes.videos, 'rss');
+    }
     return {
-      videos: rssVideos,
+      videos: rssRes.videos,
       source: 'rss',
       fromCache: false,
-      noticeKind: 'none',
     };
   }
 
-  const apiKey = getBrowserYouTubeApiKey();
-  if (apiKey) {
-    try {
-      const apiRes = await fetchViaYouTubeDataApiV3({ apiKey, query });
-      if (apiRes.noticeKind === 'none' && apiRes.videos.length > 0) {
-        writeCachedFeed(cacheKey, apiRes.videos, 'api');
-        return {
-          videos: apiRes.videos,
-          source: 'api',
-          fromCache: false,
-          noticeKind: 'none',
-        };
-      }
-      const rssVideos = await fetchRssFallback({ query });
-      if (rssVideos.length > 0) {
-        writeCachedFeed(cacheKey, rssVideos, 'rss');
-      }
-      return {
-        videos: rssVideos,
-        source: 'rss',
-        fromCache: false,
-        noticeKind: apiRes.noticeKind,
-        noticeDetail: apiRes.noticeDetail,
-      };
-    } catch (err) {
-      const rssVideos = await fetchRssFallback({ query });
-      return {
-        videos: rssVideos,
-        source: 'rss',
-        fromCache: false,
-        noticeKind: 'api_not_enabled_using_rss',
-        noticeDetail: extractReadableError(err),
-      };
+  // 2. Full YouTube search when a text query is submitted:
+  // Prefer client VITE_YOUTUBE_API_KEY if present; otherwise call /api/youtube?q=...
+  // which checks server process.env.YOUTUBE_API_KEY || process.env.VITE_YOUTUBE_API_KEY.
+  const clientApiKey = getClientYouTubeApiKey();
+  if (clientApiKey) {
+    const videos = await searchClientYouTubeDataApiV3({
+      apiKey: clientApiKey,
+      query,
+    });
+    if (videos.length > 0) {
+      writeCachedFeed(cacheKey, videos, 'api');
     }
+    return {
+      videos,
+      source: 'api',
+      fromCache: false,
+    };
   }
 
-  const rssVideos = await fetchRssFallback({ query });
-  if (rssVideos.length > 0) {
-    writeCachedFeed(cacheKey, rssVideos, 'rss');
+  const serverSearchRes = await fetchBackendYouTubeEndpoint({ query });
+  if (serverSearchRes.videos.length > 0) {
+    writeCachedFeed(cacheKey, serverSearchRes.videos, serverSearchRes.source);
   }
   return {
-    videos: rssVideos,
-    source: 'rss',
+    videos: serverSearchRes.videos,
+    source: serverSearchRes.source,
     fromCache: false,
-    noticeKind: 'no_key_using_rss',
   };
 }
