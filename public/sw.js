@@ -58,10 +58,11 @@ self.addEventListener('fetch', (event) => {
   // (Google OAuth, Firebase Auth/IdentityToolkit/SecureToken, Cloud Firestore, TinyURL, etc.)
   if (url.origin !== self.location.origin) return;
 
-  // CRITICAL: Never intercept or cache Firebase reserved auth/config endpoints or backend /api/* routes
+  // CRITICAL: Never intercept or cache Firebase reserved auth/config endpoints, .well-known verification, or backend /api/* routes
   if (
     url.pathname.startsWith('/__/auth/') ||
     url.pathname.startsWith('/__/firebase/') ||
+    url.pathname.startsWith('/.well-known/') ||
     url.pathname.startsWith('/api/')
   ) {
     return;

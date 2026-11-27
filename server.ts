@@ -44,7 +44,7 @@ async function startServer() {
   } else {
     const distPath = path.resolve(__dirname, 'dist');
     if (fs.existsSync(distPath)) {
-      app.use(express.static(distPath));
+      app.use(express.static(distPath, { dotfiles: 'allow' }));
       app.get('*', (_req, res) => {
         res.sendFile(path.join(distPath, 'index.html'));
       });
